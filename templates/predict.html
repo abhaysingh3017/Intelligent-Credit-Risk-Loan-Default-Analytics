@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predict - Credit Risk Analytics</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+  :root { --bg-main:#0f1117; --bg-card:#1e1e2e; --bg-card2:#252540; --border:#2a2a4a; --accent:#00d4ff; }
+  * { box-sizing: border-box; }
+  body { background: var(--bg-main); color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; }
+
+  .navbar { background: linear-gradient(135deg, #1a1a2e, #16213e) !important; border-bottom: 1px solid #0f3460; }
+  .navbar-brand { color: var(--accent) !important; font-weight: 700; }
+  .navbar-toggler { border-color: #3a3a5a; }
+  .navbar-toggler-icon { filter: invert(1); }
+  .nav-link { color: #b0b0b0 !important; transition: color 0.2s; }
+  .nav-link:hover, .nav-link.active { color: var(--accent) !important; }
+
+  .page-header { background: linear-gradient(135deg, #1a1a2e, #16213e);
+                 padding: 36px 16px; border-bottom: 1px solid #0f3460; }
+  .page-header h2 { color: var(--accent); font-weight: 700; font-size: clamp(1.4rem, 3vw, 2rem); }
+
+  /* Form card */
+  .form-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 28px 24px; }
+  .form-label { color: #a0a0b0; font-size: 0.88rem; margin-bottom: 4px; }
+  .form-control, .form-select {
+    background: var(--bg-card2); border: 1px solid #3a3a5a; color: #e0e0e0;
+    border-radius: 8px; padding: 10px 14px;
+  }
+  .form-control::placeholder { color: #555; }
+  .form-control:focus, .form-select:focus {
+    background: #2a2a50; border-color: var(--accent); color: #e0e0e0;
+    box-shadow: 0 0 0 0.2rem rgba(0,212,255,0.15);
+  }
+  .form-select option { background: var(--bg-card2); color: #e0e0e0; }
+  .form-control:invalid:not(:placeholder-shown) { border-color: #e74c3c; }
+
+  .btn-predict {
+    background: linear-gradient(135deg, var(--accent), #0099cc);
+    border: none; color: #000; font-weight: 700; padding: 12px 32px;
+    border-radius: 8px; font-size: 1rem; width: 100%; transition: opacity 0.2s;
+  }
+  .btn-predict:hover { opacity: 0.85; color: #000; }
+  .btn-predict:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* Result card */
+  .result-card { border-radius: 12px; padding: 24px; margin-top: 24px; }
+  .result-high   { background: linear-gradient(135deg, #2a1010, #3a1a1a); border: 2px solid #e74c3c; }
+  .result-medium { background: linear-gradient(135deg, #2a2a10, #3a3a1a); border: 2px solid #f39c12; }
+  .result-low    { background: linear-gradient(135deg, #102a10, #1a3a1a); border: 2px solid #2ecc71; }
+
+  .risk-badge {
+    padding: 5px 14px; border-radius: 20px; font-weight: 700; font-size: 0.95rem;
+    white-space: nowrap;
+  }
+  .risk-badge.high   { background: #e74c3c; color: #fff; }
+  .risk-badge.medium { background: #f39c12; color: #000; }
+  .risk-badge.low    { background: #2ecc71; color: #000; }
+
+  /* Probability bar */
+  .prob-bar-wrap { background: var(--border); border-radius: 8px; height: 22px; margin: 10px 0; overflow: hidden; }
+  .prob-bar { height: 100%; border-radius: 8px; width: 0; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+
+  /* Metric pills — responsive flex wrap */
+  .metric-pills { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 16px 0; }
+  .metric-pill { background: var(--bg-card2); border-radius: 10px; padding: 12px 16px;
+                 text-align: center; flex: 1 1 100px; min-width: 90px; max-width: 160px; }
+  .metric-pill .val { font-size: 1.2rem; font-weight: 700; color: var(--accent); }
+  .metric-pill .lbl { font-size: 0.72rem; color: #888; margin-top: 2px; }
+
+  /* Recommendation box */
+  .rec-box { background: #12121e; border-radius: 8px; padding: 14px 16px; margin-top: 14px; }
+  .rec-box p { margin: 4px 0 0; font-size: 0.85rem; color: #aaa; line-height: 1.6; }
+
+  footer { background: #1a1a2e; border-top: 1px solid var(--border); padding: 20px 16px;
+           color: #555; text-align: center; margin-top: 48px; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark">
+  <div class="container">
+    <a class="navbar-brand" href="/"><i class="fas fa-chart-line me-2"></i>CreditRisk AI</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu"
+            aria-controls="navMenu" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <ul class="navbar-nav ms-auto gap-1">
+        <li class="nav-item"><a class="nav-link" href="/"><i class="fas fa-home me-1"></i>Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="/eda"><i class="fas fa-chart-bar me-1"></i>EDA</a></li>
+        <li class="nav-item"><a class="nav-link" href="/models"><i class="fas fa-robot me-1"></i>Models</a></li>
+        <li class="nav-item"><a class="nav-link active" href="/predict"><i class="fas fa-search-dollar me-1"></i>Predict</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="container">
+    <h2><i class="fas fa-search-dollar me-2"></i>Loan Default Risk Predictor</h2>
+    <p class="text-muted mb-0">Enter customer details to assess loan default probability in real-time</p>
+  </div>
+</div>
+
+<div class="container mt-4 mb-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-7 col-xl-6">
+      <div class="form-card">
+        <h5 class="text-info mb-4"><i class="fas fa-user-circle me-2"></i>Customer Information</h5>
+
+        <form method="POST" action="/predict" id="predictForm" novalidate>
+          <div class="row g-3">
+
+            <div class="col-sm-6">
+              <label class="form-label" for="age">Age</label>
+              <input type="number" id="age" name="age" class="form-control"
+                     min="18" max="100" placeholder="e.g. 35" required
+                     value="{{ request.form.age if request.form.age }}">
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label" for="employment_type">Employment Type</label>
+              <select id="employment_type" name="employment_type" class="form-select" required>
+                <option value="" disabled {% if not request.form.employment_type %}selected{% endif %}>Select type...</option>
+                <option value="0" {% if request.form.employment_type == '0' %}selected{% endif %}>Self-Employed</option>
+                <option value="1" {% if request.form.employment_type == '1' %}selected{% endif %}>Salaried</option>
+                <option value="2" {% if request.form.employment_type == '2' %}selected{% endif %}>Business Owner</option>
+                <option value="3" {% if request.form.employment_type == '3' %}selected{% endif %}>Freelancer</option>
+              </select>
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label" for="monthly_income">Monthly Income (₹)</label>
+              <input type="number" id="monthly_income" name="monthly_income" class="form-control"
+                     min="10000" step="1000" placeholder="e.g. 50000" required
+                     value="{{ request.form.monthly_income if request.form.monthly_income }}">
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label" for="loan_amount">Loan Amount (₹)</label>
+              <input type="number" id="loan_amount" name="loan_amount" class="form-control"
+                     min="10000" step="1000" placeholder="e.g. 500000" required
+                     value="{{ request.form.loan_amount if request.form.loan_amount }}">
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label" for="credit_score">Credit Score (300–850)</label>
+              <input type="number" id="credit_score" name="credit_score" class="form-control"
+                     min="300" max="850" placeholder="e.g. 680" required
+                     value="{{ request.form.credit_score if request.form.credit_score }}">
+            </div>
+
+            <div class="col-sm-3">
+              <label class="form-label" for="existing_loans">Existing Loans</label>
+              <input type="number" id="existing_loans" name="existing_loans" class="form-control"
+                     min="0" max="15" placeholder="e.g. 2" required
+                     value="{{ request.form.existing_loans if request.form.existing_loans }}">
+            </div>
+
+            <div class="col-sm-3">
+              <label class="form-label" for="missed_payments">Missed Payments</label>
+              <input type="number" id="missed_payments" name="missed_payments" class="form-control"
+                     min="0" max="15" placeholder="e.g. 1" required
+                     value="{{ request.form.missed_payments if request.form.missed_payments }}">
+            </div>
+
+            <div class="col-12 mt-2">
+              <button type="submit" class="btn-predict" id="submitBtn">
+                <i class="fas fa-search-dollar me-2"></i>Assess Default Risk
+              </button>
+            </div>
+
+          </div>
+        </form>
+
+        <!-- ── Result ── -->
+        {% if result %}
+          {% if result.error %}
+          <div class="alert alert-danger mt-4 d-flex align-items-center gap-2" role="alert">
+            <i class="fas fa-exclamation-circle fa-lg"></i>
+            <div><strong>Error:</strong> {{ result.error }}</div>
+          </div>
+
+          {% else %}
+            {% set rl = result.risk_level | lower %}
+            {% set card_cls  = "result-" ~ rl %}
+            {% set badge_cls = rl %}
+            {% if rl == 'high' %}
+              {% set icon_cls = "fas fa-times-circle text-danger" %}
+              {% set heading  = "HIGH DEFAULT RISK" %}
+              {% set bar_color = "#e74c3c" %}
+              {% set rec = "⚠️ Loan application carries high default risk. Consider requiring additional collateral, reducing loan amount, or declining. Manual review strongly recommended." %}
+            {% elif rl == 'medium' %}
+              {% set icon_cls = "fas fa-exclamation-circle text-warning" %}
+              {% set heading  = "MEDIUM DEFAULT RISK" %}
+              {% set bar_color = "#f39c12" %}
+              {% set rec = "⚡ Moderate risk detected. Consider conditional approval with a higher interest rate, reduced tenure, or an additional guarantor. Monitor account closely." %}
+            {% else %}
+              {% set icon_cls = "fas fa-check-circle text-success" %}
+              {% set heading  = "LOW DEFAULT RISK" %}
+              {% set bar_color = "#2ecc71" %}
+              {% set rec = "✅ Customer profile indicates low default risk. Standard loan approval process can proceed. Regular monitoring recommended as per policy." %}
+            {% endif %}
+
+          <div class="result-card {{ card_cls }}" id="resultCard">
+
+            <!-- Header row -->
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+              <h5 class="mb-0"><i class="{{ icon_cls }} me-2"></i>{{ heading }}</h5>
+              <span class="risk-badge {{ badge_cls }}">{{ result.risk_level }} Risk</span>
+            </div>
+
+            <!-- Probability bar -->
+            <p class="text-muted small mb-1">Default Probability</p>
+            <div class="prob-bar-wrap">
+              <div class="prob-bar" id="probBar"
+                   data-width="{{ result.probability }}"
+                   style="background: {{ bar_color }};">
+              </div>
+            </div>
+            <h3 class="text-center my-2">
+              <span style="color: {{ bar_color }}; font-weight: 800;">{{ result.probability }}%</span>
+            </h3>
+
+            <!-- Metric pills -->
+            <div class="metric-pills">
+              <div class="metric-pill">
+                <div class="val">{{ result.dti_ratio }}</div>
+                <div class="lbl">DTI Ratio</div>
+              </div>
+              <div class="metric-pill">
+                <div class="val">{{ result.loan_to_income }}</div>
+                <div class="lbl">Loan / Income</div>
+              </div>
+              <div class="metric-pill">
+                <div class="val">{{ result.risk_score }}</div>
+                <div class="lbl">Risk Score</div>
+              </div>
+            </div>
+
+            <!-- Recommendation -->
+            <div class="rec-box">
+              <strong class="text-info small">Recommendation</strong>
+              <p>{{ rec }}</p>
+            </div>
+
+          </div><!-- /result-card -->
+          {% endif %}
+        {% endif %}
+
+      </div><!-- /form-card -->
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p class="mb-0">Intelligent Credit Risk &amp; Loan Default Analytics System &copy; 2024</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Animate probability bar on load
+  window.addEventListener('DOMContentLoaded', () => {
+    const bar = document.getElementById('probBar');
+    if (bar) {
+      const target = bar.dataset.width;
+      requestAnimationFrame(() => {
+        setTimeout(() => { bar.style.width = target + '%'; }, 100);
+      });
+      // Scroll result into view smoothly
+      const card = document.getElementById('resultCard');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  });
+
+  // Show spinner on submit
+  document.getElementById('predictForm').addEventListener('submit', function () {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Analysing...';
+  });
+</script>
+</body>
+</html>
